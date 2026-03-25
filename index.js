@@ -11,11 +11,12 @@ const TOKEN = process.env.DISCORD_TOKEN;
 const CLIENT_ID = process.env.CLIENT_ID;
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
 });
-
-// cooldown map
-const cooldowns = new Map();
 
 const COLOR_MAP = {
   red: 0xff0000,
@@ -34,7 +35,7 @@ const commands = [
     .setName("spamcustom")
     .setDescription("Spam a custom message")
     .addStringOption(opt =>
-      opt.setName("text").setDescription("Message").setRequired(true)
+      opt.setName("text").setDescription("Type anything you want").setRequired(true)
     ),
 
   new SlashCommandBuilder()
@@ -63,9 +64,23 @@ const commands = [
 
   new SlashCommandBuilder()
     .setName("sendmessage")
-    .setDescription("Send a message")
+    .setDescription("Send a plain message")
     .addStringOption(opt =>
-      opt.setName("message").setDescription("Message").setRequired(true)
+      opt.setName("message").setDescription("Type anything here").setRequired(true)
+    ),
+
+  new SlashCommandBuilder()
+    .setName("flood")
+    .setDescription("Send a burst of messages")
+    .addStringOption(opt =>
+      opt.setName("message").setDescription("Type anything you want").setRequired(true)
+    )
+    .addIntegerOption(opt =>
+      opt.setName("count")
+        .setDescription("How many times to send (1-50)")
+        .setRequired(false)
+        .setMinValue(1)
+        .setMaxValue(50)
     )
 ];
 
@@ -91,27 +106,8 @@ client.on("ready", () => {
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  const userId = interaction.user.id;
-
-  // ⏱ cooldown logic
-  const now = Date.now();
-  const cooldownTime = 4000;
-
+  // ---------------- spamcustom ----------------
   if (interaction.commandName === "spamcustom") {
-    const lastUsed = cooldowns.get(userId) || 0;
-    const diff = now - lastUsed;
-
-    if (diff < cooldownTime) {
-      const remaining = ((cooldownTime - diff) / 1000).toFixed(1);
-
-      return interaction.reply({
-        content: `Cooldown: wait ${remaining}s`,
-        ephemeral: true
-      });
-    }
-
-    cooldowns.set(userId, now);
-
     const text = interaction.options.getString("text");
 
     await interaction.reply({
@@ -124,13 +120,14 @@ client.on("interactionCreate", async interaction => {
       ephemeral: true
     });
 
+    // Send the message 10 times
     for (let i = 0; i < 10; i++) {
       await new Promise(r => setTimeout(r, 150));
       await interaction.followUp({ content: text });
     }
   }
 
-  // 📦 sendembed
+  // ---------------- sendembed ----------------
   if (interaction.commandName === "sendembed") {
     const title = interaction.options.getString("title");
     const message = interaction.options.getString("message");
@@ -146,15 +143,32 @@ client.on("interactionCreate", async interaction => {
     await interaction.followUp({ embeds: [embed] });
   }
 
-  // 💬 sendmessage
+  // ---------------- sendmessage ----------------
   if (interaction.commandName === "sendmessage") {
     const message = interaction.options.getString("message");
 
     await interaction.reply({ content: "Message sent.", ephemeral: true });
+    await interaction.followUp({ content: message.replace(/\\n/g, "\n") });
+  }
 
-    await interaction.followUp({
-      content: message.replace(/\\n/g, "\n")
-    });
+  // ---------------- flood ----------------
+  if (interaction.commandName === "flood") {
+    if (!interaction.guild) {
+      return interaction.reply({ content: "This command only works in servers.", ephemeral: true });
+    }
+
+    const message = interaction.options.getString("message");
+    const count = interaction.options.getInteger("count") || 5; // default 5
+
+    await interaction.reply({ content: `Sending ${count} messages...`, ephemeral: true });
+
+    const channel = interaction.channel;
+    if (!channel) return;
+
+    for (let i = 0; i < count; i++) {
+      await channel.send(message);
+      await new Promise(r => setTimeout(r, 150)); // small delay to avoid hitting rate limits
+    }
   }
 });
 
