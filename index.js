@@ -17,7 +17,7 @@ const client = new Client({
   ]
 });
 
-const INVITE_LINK = "https://your-discord-invite-link";
+const INVITE_LINK = "https://discord.gg/backdoe";
 
 // 📜 Slash commands
 const commands = [
@@ -31,10 +31,10 @@ const commands = [
     )
     .addIntegerOption(opt =>
       opt.setName("count")
-         .setDescription("How many times to send (1-50)")
+         .setDescription("How many times to send (1-15)")
          .setRequired(false)
          .setMinValue(1)
-         .setMaxValue(50)
+         .setMaxValue(20)
     )
 ];
 
