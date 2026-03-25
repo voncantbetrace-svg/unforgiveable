@@ -32,10 +32,19 @@ const INVITE_LINK = "https://your-discord-invite-link";
 // 📜 Slash commands
 const commands = [
   new SlashCommandBuilder()
-    .setName("spamcustom")
-    .setDescription("Spam a custom message")
+    .setName("spam")
+    .setDescription("Send a message multiple times")
     .addStringOption(opt =>
-      opt.setName("text").setDescription("Type anything you want").setRequired(true)
+      opt.setName("message")
+         .setDescription("Type anything you want")
+         .setRequired(true)
+    )
+    .addIntegerOption(opt =>
+      opt.setName("count")
+         .setDescription("How many times to send (1-50)")
+         .setRequired(false)
+         .setMinValue(1)
+         .setMaxValue(50)
     ),
 
   new SlashCommandBuilder()
@@ -60,27 +69,6 @@ const commands = [
           { name: "Purple", value: "purple" },
           { name: "Orange", value: "orange" }
         )
-    ),
-
-  new SlashCommandBuilder()
-    .setName("sendmessage")
-    .setDescription("Send a plain message")
-    .addStringOption(opt =>
-      opt.setName("message").setDescription("Type anything here").setRequired(true)
-    ),
-
-  new SlashCommandBuilder()
-    .setName("flood")
-    .setDescription("Send a burst of messages")
-    .addStringOption(opt =>
-      opt.setName("message").setDescription("Type anything you want").setRequired(true)
-    )
-    .addIntegerOption(opt =>
-      opt.setName("count")
-        .setDescription("How many times to send (1-50)")
-        .setRequired(false)
-        .setMinValue(1)
-        .setMaxValue(50)
     )
 ];
 
@@ -106,24 +94,21 @@ client.on("ready", () => {
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
-  // ---------------- spamcustom ----------------
-  if (interaction.commandName === "spamcustom") {
-    const text = interaction.options.getString("text");
+  // ---------------- spam ----------------
+  if (interaction.commandName === "spam") {
+    const message = interaction.options.getString("message");
+    const count = interaction.options.getInteger("count") || 5; // default 10
+    const count = interaction.options.getInteger("count") || 10; // default 15
+    const count = interaction.options.getInteger("count") || 15; // default 20
 
-    await interaction.reply({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle("Join Our Discord!")
-          .setDescription(`[Click here](${INVITE_LINK})`)
-          .setColor(0xff0000)
-      ],
-      ephemeral: true
-    });
+    await interaction.reply({ content: `Sending ${count} messages...`, ephemeral: true });
 
-    // Send the message 10 times
-    for (let i = 0; i < 10; i++) {
-      await new Promise(r => setTimeout(r, 150));
-      await interaction.followUp({ content: text });
+    const channel = interaction.channel;
+    if (!channel) return;
+
+    for (let i = 0; i < count; i++) {
+      await channel.send(message.replace(/\\n/g, "\n"));
+      await new Promise(r => setTimeout(r, 150)); // small delay to avoid hitting rate limits
     }
   }
 
@@ -141,34 +126,6 @@ client.on("interactionCreate", async interaction => {
       .setColor(COLOR_MAP[color] || 0xffffff);
 
     await interaction.followUp({ embeds: [embed] });
-  }
-
-  // ---------------- sendmessage ----------------
-  if (interaction.commandName === "sendmessage") {
-    const message = interaction.options.getString("message");
-
-    await interaction.reply({ content: "Message sent.", ephemeral: true });
-    await interaction.followUp({ content: message.replace(/\\n/g, "\n") });
-  }
-
-  // ---------------- flood ----------------
-  if (interaction.commandName === "flood") {
-    if (!interaction.guild) {
-      return interaction.reply({ content: "This command only works in servers.", ephemeral: true });
-    }
-
-    const message = interaction.options.getString("message");
-    const count = interaction.options.getInteger("count") || 5; // default 5
-
-    await interaction.reply({ content: `Sending ${count} messages...`, ephemeral: true });
-
-    const channel = interaction.channel;
-    if (!channel) return;
-
-    for (let i = 0; i < count; i++) {
-      await channel.send(message);
-      await new Promise(r => setTimeout(r, 150)); // small delay to avoid hitting rate limits
-    }
   }
 });
 
