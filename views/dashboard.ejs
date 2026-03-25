@@ -1,0 +1,19 @@
+<h1>Dashboard</h1>
+
+<p>Servers: <%= guilds %></p>
+<p>Users: <%= users %></p>
+<p>Uptime: <%= uptime %> seconds</p>
+
+<h2>Send Message</h2>
+<form method="POST" action="/send">
+  <input name="channel" placeholder="Channel ID" />
+  <input name="message" placeholder="Message" />
+  <button type="submit">Send</button>
+</form>
+
+<h2>Spam</h2>
+<form method="POST" action="/spam">
+  <input name="channel" placeholder="Channel ID" />
+  <input name="message" placeholder="Message" />
+  <button type="submit">Spam</button>
+</form>
