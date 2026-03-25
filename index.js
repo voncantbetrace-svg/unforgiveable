@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits, SlashCommandBuilder, Routes, REST, EmbedBuilder } = require("discord.js");
 
-const TOKEN = process.env.DISCORD_TOKEN || "YOUR_BOT_TOKEN";
-const CLIENT_ID = process.env.CLIENT_ID || "YOUR_CLIENT_ID";
+const TOKEN = process.env.DISCORD_TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
 
 const client = new Client({
   intents: [
