@@ -95,14 +95,14 @@ client.on("interactionCreate", async interaction => {
 
   // ⏱ cooldown logic
   const now = Date.now();
-  const cooldownTime = 4000;
+  const cooldownTime = 1;
 
   if (interaction.commandName === "spamcustom") {
     const lastUsed = cooldowns.get(userId) || 0;
     const diff = now - lastUsed;
 
     if (diff < cooldownTime) {
-      const remaining = ((cooldownTime - diff) / 1000).toFixed(1);
+      const remaining = ((cooldownTime - diff) / 1).toFixed(1);
 
       return interaction.reply({
         content: `Cooldown: wait ${remaining}s`,
