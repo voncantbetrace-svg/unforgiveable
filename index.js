@@ -1,4 +1,9 @@
-require("dotenv").config();
+// Try to load dotenv safely (won't crash if not installed)
+try {
+  require("dotenv").config();
+} catch (err) {
+  console.log("dotenv not found, using normal environment variables");
+}
 
 const {
   Client,
@@ -10,10 +15,13 @@ const {
   EmbedBuilder
 } = require("discord.js");
 
-const { TOKEN, CLIENT_ID, GUILD_ID } = process.env;
+// Pull from env OR fallback (prevents crash)
+const TOKEN = process.env.TOKEN || "PASTE_YOUR_TOKEN_HERE";
+const CLIENT_ID = process.env.CLIENT_ID || "PASTE_CLIENT_ID";
+const GUILD_ID = process.env.GUILD_ID || "PASTE_GUILD_ID";
 
 if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
-  console.error("Missing TOKEN / CLIENT_ID / GUILD_ID in .env");
+  console.error("❌ Missing TOKEN / CLIENT_ID / GUILD_ID");
   process.exit(1);
 }
 
@@ -79,13 +87,13 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
     );
     console.log("✅ Commands registered");
   } catch (err) {
-    console.error(err);
+    console.error("❌ Command registration failed:", err);
   }
 })();
 
 // ready event
 client.once(Events.ClientReady, () => {
-  console.log(`Logged in as ${client.user.tag}`);
+  console.log(`✅ Logged in as ${client.user.tag}`);
 });
 
 // interaction handler
@@ -106,30 +114,37 @@ client.on(Events.InteractionCreate, async interaction => {
 
   cooldowns.set(userId, now);
 
-  // sendmessage
-  if (interaction.commandName === "sendmessage") {
-    const msg = interaction.options.getString("message");
+  try {
+    // sendmessage
+    if (interaction.commandName === "sendmessage") {
+      const msg = interaction.options.getString("message");
 
-    await interaction.reply({ content: "Sent.", ephemeral: true });
+      await interaction.reply({ content: "Sent.", ephemeral: true });
 
-    await interaction.followUp({
-      content: msg.replace(/\\n/g, "\n")
-    });
-  }
+      await interaction.followUp({
+        content: msg.replace(/\\n/g, "\n")
+      });
+    }
 
-  // sendembed
-  if (interaction.commandName === "sendembed") {
-    const title = interaction.options.getString("title");
-    const message = interaction.options.getString("message");
-    const color = interaction.options.getString("color");
+    // sendembed
+    if (interaction.commandName === "sendembed") {
+      const title = interaction.options.getString("title");
+      const message = interaction.options.getString("message");
+      const color = interaction.options.getString("color");
 
-    const embed = new EmbedBuilder()
-      .setTitle(title)
-      .setDescription(message.replace(/\\n/g, "\n"))
-      .setColor(COLORS[color] || 0xffffff);
+      const embed = new EmbedBuilder()
+        .setTitle(title)
+        .setDescription(message.replace(/\\n/g, "\n"))
+        .setColor(COLORS[color] || 0xffffff);
 
-    await interaction.reply({ content: "Embed sent.", ephemeral: true });
-    await interaction.followUp({ embeds: [embed] });
+      await interaction.reply({ content: "Embed sent.", ephemeral: true });
+      await interaction.followUp({ embeds: [embed] });
+    }
+  } catch (err) {
+    console.error("❌ Interaction error:", err);
+    if (!interaction.replied) {
+      interaction.reply({ content: "Error occurred.", ephemeral: true });
+    }
   }
 });
 
