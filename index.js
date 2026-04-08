@@ -15,13 +15,13 @@ const {
   EmbedBuilder
 } = require("discord.js");
 
-// Pull from env OR fallback (prevents crash)
+// Pull from env OR fallback
 const TOKEN = process.env.TOKEN || "PASTE_YOUR_TOKEN_HERE";
 const CLIENT_ID = process.env.CLIENT_ID || "PASTE_CLIENT_ID";
-const GUILD_ID = process.env.GUILD_ID || "PASTE_GUILD_ID";
 
-if (!TOKEN || !CLIENT_ID || !GUILD_ID) {
-  console.error("❌ Missing TOKEN / CLIENT_ID / GUILD_ID");
+// ❌ GUILD_ID NOT NEEDED FOR GLOBAL
+if (!TOKEN || !CLIENT_ID) {
+  console.error("❌ Missing TOKEN / CLIENT_ID");
   process.exit(1);
 }
 
@@ -76,16 +76,19 @@ const commands = [
     )
 ].map(c => c.toJSON());
 
-// register commands
+// ✅ GLOBAL command registration
 const rest = new REST({ version: "10" }).setToken(TOKEN);
 
 (async () => {
   try {
+    console.log("🌍 Registering GLOBAL commands...");
+
     await rest.put(
-      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      Routes.applicationCommands(CLIENT_ID), // ✅ GLOBAL HERE
       { body: commands }
     );
-    console.log("✅ Commands registered");
+
+    console.log("✅ Global commands registered!");
   } catch (err) {
     console.error("❌ Command registration failed:", err);
   }
@@ -148,4 +151,5 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 });
 
+// login
 client.login(TOKEN);
